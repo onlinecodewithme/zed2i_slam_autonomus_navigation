@@ -1,0 +1,22 @@
+/**:
+  ros__parameters:
+    # Detector parameters
+    model_path: ""  # Empty string means use the default model (pretrained YOLOv5)
+    conf_threshold: 0.5
+    nms_threshold: 0.45
+    detection_rate: 5.0  # Hz
+    publish_visualization: true
+
+airplane_detector:
+  ros__parameters:
+    # Camera topic overrides (if needed)
+    # camera_rgb_topic: "/zed2i/zed_node/rgb/image_rect_color"
+    # camera_depth_topic: "/zed2i/zed_node/depth/depth_registered"
+    # camera_info_topic: "/zed2i/zed_node/rgb/camera_info"
+
+detection_visualizer:
+  ros__parameters:
+    image_topic: "/zed2i/zed_node/rgb/image_rect_color"
+    detection_topic: "/airplane_detection/detections"
+    display_window: true
+    publish_visualization: true

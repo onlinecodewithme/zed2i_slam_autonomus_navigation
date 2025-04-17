@@ -1,0 +1,26 @@
+# Request: Define the inspection target
+
+# Target type
+uint8 target_type
+uint8 POINT = 0        # Target is a specific point in space
+uint8 AIRPLANE = 1     # Target is an airplane (to be detected)
+
+# Target position (used when target_type is POINT)
+geometry_msgs/Pose target_pose
+
+# Airplane class ID (used when target_type is AIRPLANE)
+string airplane_class_id
+
+# Maximum distance from the target to consider inspection complete
+float32 inspection_radius
+
+# Inspection pattern
+uint8 pattern
+uint8 CIRCLE = 0        # Circle around target
+uint8 SQUARE = 1        # Square pattern around target
+uint8 ZIGZAG = 2        # ZigZag pattern
+
+---
+# Response
+bool success
+string message

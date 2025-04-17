@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Robot Properties -->
+  <xacro:property name="robot_length" value="1.070"/>
+  <xacro:property name="robot_width" value="0.820"/>
+  <xacro:property name="robot_height" value="0.680"/>
+  <xacro:property name="track_wheel_radius" value="0.095"/>
+  <xacro:property name="track_width" value="0.176"/>
+  <xacro:property name="chassis_mass" value="50.0"/>
+  
+  <!-- Inertia macro -->
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m*(y*y+z*z)/12}" ixy="0" ixz="0"
+               iyy="${m*(x*x+z*z)/12}" iyz="0"
+               izz="${m*(x*x+y*y)/12}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- Track macro -->
+  <xacro:macro name="track" params="prefix reflect_y">
+    <link name="${prefix}_track">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${robot_length*0.9} ${track_width} ${track_wheel_radius*2}"/>
+        </geometry>
+        <material name="dark_grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${robot_length*0.9} ${track_width} ${track_wheel_radius*2}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertia m="20" x="${robot_length*0.9}" y="${track_width}" z="${track_wheel_radius*2}"/>
+    </link>
+    
+    <joint name="${prefix}_track_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${prefix}_track"/>
+      <origin xyz="0 ${reflect_y*(robot_width/2 - track_width/2)} 0" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+</robot>

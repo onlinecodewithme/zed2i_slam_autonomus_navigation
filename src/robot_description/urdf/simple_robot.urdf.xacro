@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<robot name="inspection_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Base properties -->
+  <xacro:property name="robot_length" value="1.070"/>
+  <xacro:property name="robot_width" value="0.820"/>
+  <xacro:property name="robot_height" value="0.680"/>
+  <xacro:property name="track_wheel_radius" value="0.095"/>
+  <xacro:property name="track_width" value="0.176"/>
+  <xacro:property name="chassis_mass" value="50.0"/>
+  
+  <!-- Base link -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 ${robot_height/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${robot_length} ${robot_width} ${robot_height}"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.2 0.2 0.8 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${robot_height/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${robot_length} ${robot_width} ${robot_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="${chassis_mass}"/>
+      <inertia ixx="${chassis_mass*(robot_width*robot_width+robot_height*robot_height)/12}" 
+               ixy="0" 
+               ixz="0"
+               iyy="${chassis_mass*(robot_length*robot_length+robot_height*robot_height)/12}" 
+               iyz="0"
+               izz="${chassis_mass*(robot_length*robot_length+robot_width*robot_width)/12}"/>
+    </inertial>
+  </link>
+
+  <!-- Robot footprint for navigation -->
+  <link name="base_footprint"/>
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 ${track_wheel_radius}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Camera link -->
+  <link name="camera_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.1 0.05"/>
+      </geometry>
+      <material name="red">
+        <color rgba="0.8 0.1 0.1 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.1 0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.00001" ixy="0" ixz="0" iyy="0.00001" iyz="0" izz="0.00001"/>
+    </inertial>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="${robot_length/2 - 0.05} 0 ${robot_height + 0.05}" rpy="0 0 0"/>
+  </joint>
+
+</robot>

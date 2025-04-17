@@ -1,0 +1,34 @@
+/**:
+  ros__parameters:
+    # Common parameters
+    use_sim_time: false
+
+inspection_planner:
+  ros__parameters:
+    # Path/topic configuration
+    path_topic: '/path'
+    detection_topic: '/airplane_detection/detections'
+    status_topic: '/inspection_status'
+    
+    # Inspection parameters
+    inspection_radius: 3.0  # meters
+    inspection_height: 1.0  # meters
+    inspection_points: 24  # number of waypoints
+    inspection_pattern: 'circle'  # circle, square, zigzag, spiral, vertical_scan, horizontal_scan
+    inspection_timeout: 300.0  # seconds
+    
+    # Visualization
+    enable_visualization: true
+
+inspection_visualizer:
+  ros__parameters:
+    # Topic configuration
+    status_topic: '/inspection_status'
+    path_topic: '/path'
+    detection_topic: '/airplane_detection/detections'
+    visualization_topic: '/inspection_visualization'
+    
+    # Visualization parameters
+    marker_scale: 1.0
+    marker_lifetime: 0.0  # 0 = persistent
+    use_unique_namespaces: true

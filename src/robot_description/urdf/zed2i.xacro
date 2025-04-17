@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ZED2i camera macro -->
+  <xacro:macro name="zed2i_camera" params="name parent *origin">
+    <link name="${name}_camera_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.175 0.030 0.033"/>
+        </geometry>
+        <material name="dark_gray">
+          <color rgba="0.1 0.1 0.1 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.175 0.030 0.033"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.159"/>
+        <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+      </inertial>
+    </link>
+
+    <joint name="${name}_camera_joint" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${name}_camera_link"/>
+      <xacro:insert_block name="origin"/>
+    </joint>
+
+    <!-- Optical frame for the camera (for ROS conventions) -->
+    <link name="${name}_camera_optical_frame"/>
+    <joint name="${name}_camera_optical_joint" type="fixed">
+      <parent link="${name}_camera_link"/>
+      <child link="${name}_camera_optical_frame"/>
+      <!-- ZED2i is a stereo camera with a baseline of 120mm -->
+      <!-- The optical frame is at the left camera optical center -->
+      <origin xyz="0 0 0" rpy="-${pi/2} 0 -${pi/2}"/>
+    </joint>
+
+    <!-- Left camera frame -->
+    <link name="${name}_left_camera_frame"/>
+    <joint name="${name}_left_camera_joint" type="fixed">
+      <parent link="${name}_camera_link"/>
+      <child link="${name}_left_camera_frame"/>
+      <origin xyz="0 0.06 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Left camera optical frame -->
+    <link name="${name}_left_camera_optical_frame"/>
+    <joint name="${name}_left_camera_optical_joint" type="fixed">
+      <parent link="${name}_left_camera_frame"/>
+      <child link="${name}_left_camera_optical_frame"/>
+      <origin xyz="0 0 0" rpy="-${pi/2} 0 -${pi/2}"/>
+    </joint>
+
+    <!-- Right camera frame -->
+    <link name="${name}_right_camera_frame"/>
+    <joint name="${name}_right_camera_joint" type="fixed">
+      <parent link="${name}_camera_link"/>
+      <child link="${name}_right_camera_frame"/>
+      <origin xyz="0 -0.06 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Right camera optical frame -->
+    <link name="${name}_right_camera_optical_frame"/>
+    <joint name="${name}_right_camera_optical_joint" type="fixed">
+      <parent link="${name}_right_camera_frame"/>
+      <child link="${name}_right_camera_optical_frame"/>
+      <origin xyz="0 0 0" rpy="-${pi/2} 0 -${pi/2}"/>
+    </joint>
+  </xacro:macro>
+
+</robot>
