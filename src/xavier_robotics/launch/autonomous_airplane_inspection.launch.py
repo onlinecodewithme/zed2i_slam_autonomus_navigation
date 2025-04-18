@@ -293,7 +293,7 @@ def generate_launch_description():
             'max_height': 2.0,
             'obstacle_threshold': 0.5,
             'inflation_radius': 0.5,
-            'update_rate': 5.0,
+            'update_rate': 10.0,  # Increased update rate
             'use_pointcloud': True  # Using pointcloud for better accuracy
         }]
     )
@@ -321,6 +321,9 @@ def generate_launch_description():
         parameters=[configured_nav_params]
     )
     
+    # NOTE: We intentionally DO NOT include map_publisher.py to avoid test data generation
+    # This ensures we only use real data from the ZED camera
+    
     # Costmap saver node
     costmap_saver_node = Node(
         package='autonomous_nav',
@@ -332,6 +335,32 @@ def generate_launch_description():
             'save_frequency': 0.2,  # Save every 5 seconds
             'map_name': 'autonomous_inspection_costmap',
             'costmap_topic': '/local_costmap'
+        }]
+    )
+    
+    # Updates publisher for local costmap
+    local_updates_node = Node(
+        package='autonomous_nav',
+        executable='map_updates_publisher.py',
+        name='local_updates_publisher',
+        output='screen',
+        parameters=[{
+            'map_topic': '/local_costmap',
+            'update_topic': '/local_costmap_updates',
+            'update_rate': 5.0
+        }]
+    )
+    
+    # Global costmap node - creates a copy of local costmap for global planning
+    global_costmap_node = Node(
+        package='autonomous_nav',
+        executable='global_costmap_relay.py',
+        name='global_costmap_relay',
+        output='screen',
+        parameters=[{
+            'local_costmap_topic': '/local_costmap',
+            'global_costmap_topic': '/global_costmap/costmap',
+            'update_rate': 5.0
         }]
     )
     
@@ -352,8 +381,8 @@ def generate_launch_description():
         output='screen'
     )
     
-    # RViz with complete display fix
-    rviz_config_file = os.path.join(autonomous_nav_dir, 'rviz', 'navigation.rviz')
+    # RViz with complete display fix - use real_costmap.rviz to avoid test pattern
+    rviz_config_file = os.path.join(autonomous_nav_dir, 'rviz', 'real_costmap.rviz')
     rviz_node = Node(
         condition=IfCondition(use_rviz),
         package='rviz2',
@@ -415,60 +444,8 @@ def generate_launch_description():
     # Start the map server early if not using SLAM
     ld.add_action(map_server)
     
-    # Local costmap generator - This generates the real costmap from ZED camera data
-    local_costmap_generator_node = Node(
-        package='autonomous_nav',
-        executable='local_costmap_generator.py',
-        name='local_costmap_generator',
-        output='screen',
-        parameters=[{
-            'use_sim_time': use_sim_time,
-            'depth_topic': '/zed2i/zed_node/depth/depth_registered',
-            'camera_info_topic': '/zed2i/zed_node/rgb/camera_info',
-            'pointcloud_topic': '/zed2i/zed_node/point_cloud/cloud_registered',
-            'costmap_topic': '/local_costmap',
-            'costmap_resolution': 0.05,
-            'costmap_width': 20.0,
-            'costmap_height': 20.0,
-            'costmap_origin_x': -10.0,
-            'costmap_origin_y': -10.0,
-            'min_height': 0.05,
-            'max_height': 2.0,
-            'obstacle_threshold': 0.5,
-            'inflation_radius': 0.5,
-            'update_rate': 10.0,  # Increased update rate
-            'use_pointcloud': True  # Using pointcloud for better accuracy
-        }]
-    )
-    
-    # Updates publisher for local costmap
-    local_updates_node = Node(
-        package='autonomous_nav',
-        executable='map_updates_publisher.py',
-        name='local_updates_publisher',
-        output='screen',
-        parameters=[{
-            'map_topic': '/local_costmap',
-            'update_topic': '/local_costmap_updates',
-            'update_rate': 5.0
-        }]
-    )
-    
-    # Global costmap node - creates a copy of local costmap for global planning
-    global_costmap_node = Node(
-        package='autonomous_nav',
-        executable='global_costmap_relay.py',
-        name='global_costmap_relay',
-        output='screen',
-        parameters=[{
-            'local_costmap_topic': '/local_costmap',
-            'global_costmap_topic': '/global_costmap/costmap',
-            'update_rate': 5.0
-        }]
-    )
-
     # Start costmap nodes directly to make them immediately available
-    # Note: No map_publisher node here, only real costmap generation from camera data
+    # NOTE: NOT using map_publisher.py to ensure we only use real ZED camera data
     ld.add_action(local_costmap_generator_node)
     ld.add_action(local_updates_node)
     ld.add_action(global_costmap_node)

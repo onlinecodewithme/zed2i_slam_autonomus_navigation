@@ -114,7 +114,7 @@ Visualization Manager:
       Value: true
     - Alpha: 0.8
       Class: rviz_default_plugins/Map
-      Color Scheme: costmap
+      Color Scheme: raw
       Draw Behind: false
       Enabled: true
       Name: Map
