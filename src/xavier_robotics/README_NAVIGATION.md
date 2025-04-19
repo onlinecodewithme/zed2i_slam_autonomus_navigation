@@ -1,97 +1,126 @@
-# Navigation System for Xavier Robotics
+# Autonomous Navigation with ZED2i Camera Integration
 
-This document explains how to use the navigation system for autonomous robot operation.
+This document explains how to set up and run autonomous navigation for airplane inspection using the ZED2i depth camera as the primary perception system. This system uses the camera's point cloud data to generate costmaps for navigation.
 
-## Overview
+## System Components
 
-The navigation system uses the ZED camera to:
-1. Generate real-time costmaps from depth data
-2. Save these costmaps as static maps for navigation
-3. Load saved maps for autonomous navigation planning
+The autonomous navigation system consists of these key components:
 
-## Two Main Operating Modes
+1. **Local Costmap Generator**: Processes ZED2i camera data (pointcloud) to create a costmap
+2. **Global Costmap Relay**: Bridges the local costmap to the expected global costmap for the inspector
+3. **Autonomous Airplane Inspector**: Plans and executes inspection paths around aircraft
+4. **Debugging Utilities**: Tools to monitor costmap messages and system status
 
-### 1. Real Camera Mode (Map Creation)
+## Fixed Issues
 
-This mode uses the ZED camera to scan the environment and generate costmaps, which are automatically saved to disk.
+We addressed several key issues in the costmap generation system:
 
-**Run with:**
+1. **OccupancyGrid Message Format**: Fixed data value range to comply with ROS2 OccupancyGrid requirements [-128, 127] 
+2. **Costmap Visibility**: Now initializing costmap with free space (0) instead of unknown (-1) for better RViz visualization
+3. **Topic Synchronization**: Added relay to bridge the generated costmap to the expected topics for navigation
+
+## Running the System
+
+### 1. Basic Costmap Generation
+
+To test just the costmap generation:
+
 ```bash
-./src/xavier_robotics/scripts/run_real_camera_only.sh
+./src/xavier_robotics/scripts/run_costmap_with_debug.sh --rviz
 ```
 
-**What it does:**
-- Connects to the ZED 2i camera
-- Processes depth and point cloud data
-- Creates a dynamic costmap based on 3D data
-- Displays the costmap in RViz
-- Saves the costmap periodically to `~/maps/`
+This will start:
+- Local costmap generator with ZED2i camera
+- Debug node to monitor the costmap
+- RViz for visualizing the costmap
 
-### 2. Static Map Navigation Mode
+### 2. Full Navigation System
 
-This mode loads a previously saved map for navigation planning.
+To run the full autonomous navigation system:
 
-**Run with:**
 ```bash
-./src/xavier_robotics/scripts/run_static_map_navigation.sh
+./src/xavier_robotics/scripts/run_full_navigation.sh --rviz --inspector
 ```
 
-**What it does:**
-- Lists available maps in the `~/maps/` directory
-- Lets you select which map to use
-- Loads the map as a static map for navigation
-- Continues to update the local costmap with real-time data
-- Displays both the static map and costmaps in RViz
+Options:
+- `--rviz`: Launch RViz for visualization
+- `--debug`: Launch debug nodes for monitoring
+- `--inspector`: Launch the autonomous airplane inspector
 
-## Workflow
+### 3. Custom Configuration
 
-1. **Map Creation**:
-   - Run `./src/xavier_robotics/scripts/run_real_camera_only.sh`
-   - Move the robot around to scan the environment
-   - Maps are saved automatically to `~/maps/`
-   - Press Ctrl+C when done mapping
+You can also run individual components for custom testing:
 
-2. **Navigation Using a Map**:
-   - Run `./src/xavier_robotics/scripts/run_static_map_navigation.sh`
-   - Select a map from the list (or press Enter for the latest)
-   - The system will load the map and show it in RViz
-   - Costmaps will be updated based on new sensor data
+```bash
+# Run just the costmap generator
+ros2 run autonomous_nav local_costmap_generator.py
 
-## Maps
+# Run the costmap relay
+ros2 run autonomous_nav global_costmap_relay.py
 
-Maps are saved in the `~/maps/` directory with:
-- `.pgm` files containing the image data
-- `.yaml` files containing metadata (resolution, origin, etc.)
-
-The map name format is: `real_camera_costmap_YYYYMMDD_HHMMSS_XXX.yaml`
+# Run just the autonomous inspector
+ros2 run autonomous_nav autonomous_airplane_inspector.py
+```
 
 ## Troubleshooting
 
-If the ZED camera is not connecting:
-- Check that it's properly plugged in
-- Verify that `zed_camera_check.py` is showing correct detection
-- Try running `ls /dev/video*` to see if camera devices are present
+### RViz Costmap Display Issues
 
 If costmaps are not visible in RViz:
-- Check that RViz is using the right configuration 
-- Ensure the correct frame IDs are being used
-- Verify topics are being published with `ros2 topic list` and `ros2 topic echo`
 
-## Technical Details
+1. Verify that transform frames exist:
+   ```bash
+   ros2 run tf2_ros tf2_echo map base_link
+   ```
 
-### Topics
+2. Check costmap topics are publishing:
+   ```bash
+   ros2 topic info /local_costmap
+   ros2 topic info /global_costmap/costmap
+   ```
 
-- `/map` - The static map (when in navigation mode)
-- `/local_costmap` - The local costmap based on current sensor data
-- `/global_costmap/costmap` - The global costmap (relayed from local costmap)
-- `/local_costmap_updates` - Updates to the local costmap
-- `/global_costmap/costmap_updates` - Updates to the global costmap
-- `/zed2i/zed_node/point_cloud/cloud_registered` - Point cloud from ZED camera
-- `/zed2i/zed_node/depth/depth_registered` - Depth image from ZED camera
+3. Check for error messages in the debug node:
+   ```bash
+   ros2 run xavier_robotics debug_costmap.py
+   ```
 
-### Frame IDs
+### ZED Camera Issues
 
-- `map` - The fixed global reference frame
-- `odom` - The odometry frame
-- `base_link` - The robot base frame
-- `camera_link` - The camera frame
+If ZED camera data is not coming through:
+
+1. Verify camera is connected:
+   ```bash
+   ros2 run autonomous_nav zed_camera_check.py
+   ```
+   
+2. Check if pointcloud topic is publishing:
+   ```bash
+   ros2 topic echo /zed2i/zed_node/point_cloud/cloud_registered --once
+   ```
+
+## Architecture Overview
+
+The navigation system follows this data flow:
+
+```
+ZED2i Camera 
+    ↓
+Point Cloud Data
+    ↓
+Local Costmap Generator
+    ↓
+Global Costmap Relay
+    ↓
+Autonomous Airplane Inspector
+    ↓
+Navigation Commands
+```
+
+## Next Steps
+
+For further enhancement of the system:
+
+1. Improve obstacle detection sensitivity
+2. Add dynamic map updating based on camera movement
+3. Integrate with path planning algorithms
+4. Add additional inspection patterns for aircraft inspection
