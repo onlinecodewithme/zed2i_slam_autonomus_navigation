@@ -96,9 +96,13 @@ class AutonomousAirplaneInspector(Node):
             callback_group=self.callback_group
         )
         
+        # Subscribe to costmap - can use either local or global costmap topic
+        costmap_topic = self.declare_parameter('costmap_topic', '/global_costmap/costmap').value
+        self.get_logger().info(f'Subscribing to costmap topic: {costmap_topic}')
+        
         self.costmap_subscription = self.create_subscription(
             OccupancyGrid,
-            '/global_costmap/costmap',
+            costmap_topic,
             self.costmap_callback,
             10,
             callback_group=self.callback_group
@@ -158,6 +162,29 @@ class AutonomousAirplaneInspector(Node):
         """Update the current costmap"""
         self.costmap = msg
         
+        # Log costmap receipt periodically to verify data flow
+        if hasattr(self, 'costmap_log_counter'):
+            self.costmap_log_counter += 1
+        else:
+            self.costmap_log_counter = 0
+            
+        # Only log occasionally to avoid flooding
+        if self.costmap_log_counter % 30 == 0:
+            width = msg.info.width
+            height = msg.info.height
+            resolution = msg.info.resolution
+            
+            # Count cells by type
+            free_cells = sum(1 for cell in msg.data if cell == 0)
+            occupied_cells = sum(1 for cell in msg.data if cell > 0)
+            unknown_cells = sum(1 for cell in msg.data if cell < 0)
+            
+            total_cells = width * height
+            self.get_logger().info(f"Received costmap: {width}x{height} cells ({width*resolution:.1f}x{height*resolution:.1f}m)")
+            self.get_logger().info(f"  Free: {free_cells}/{total_cells} ({free_cells/total_cells*100:.1f}%)")
+            self.get_logger().info(f"  Occupied: {occupied_cells}/{total_cells} ({occupied_cells/total_cells*100:.1f}%)")
+            self.get_logger().info(f"  Unknown: {unknown_cells}/{total_cells} ({unknown_cells/total_cells*100:.1f}%)")
+        
     def airplane_detection_callback(self, msg):
         """Process airplane detection information"""
         self.airplane_detection = msg
@@ -169,6 +196,10 @@ class AutonomousAirplaneInspector(Node):
     def plan_inspection_path(self, airplane_pose):
         """Generate a path to inspect the airplane"""
         self.get_logger().info('Planning inspection path around airplane...')
+        
+        # Check if we have a valid costmap
+        if self.costmap is None:
+            self.get_logger().warn('No costmap available for planning. Using default path generation.')
         
         # Use the inspection planner to generate waypoints
         self.inspection_path = self.inspection_planner.generate_inspection_path(
@@ -252,7 +283,11 @@ class AutonomousAirplaneInspector(Node):
         
     def send_goal(self, goal_pose):
         """Send a navigation goal to Nav2 and wait for completion"""
-        self.get_logger().info(f'Navigating to: ({goal_pose.pose.position.x}, {goal_pose.pose.position.y})')
+        self.get_logger().info(f'Navigating to: ({goal_pose.pose.position.x:.2f}, {goal_pose.pose.position.y:.2f})')
+        
+        # Verify we have a costmap for navigation
+        if self.costmap is None:
+            self.get_logger().warn('No costmap available for navigation. This may cause navigation to fail.')
         
         # Create the NavigateToPose goal
         goal_msg = NavigateToPose.Goal()
