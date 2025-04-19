@@ -1,126 +1,116 @@
-# Autonomous Airplane Inspection with 2D Costmap Generation
+# Costmap Generation with ZED2i Camera
 
-This document explains how to run the autonomous airplane inspection system with properly functioning costmap generation.
+This module implements local costmap generation for autonomous navigation using a ZED2i camera. It can generate costmaps for obstacles and free space based on the point cloud data from the ZED2i camera.
 
-## Overview of Fixes
+## Features
 
-The following issues have been fixed:
+- Dynamic costmap generation from ZED2i camera data (pointcloud or depth image)
+- Automatic map growth as the camera moves to new areas
+- Obstacle inflation for better path planning
+- Compatible with Nav2 and RViz visualization
 
-1. **TF Tree Issues**:
-   - The static map→odom transform is now published early in the launch sequence
-   - Static_odom_publisher is launched before other components to ensure TF is available
-   - Fixed transform chain to avoid "map not received" errors
+## Implementation Details
 
-2. **Behavior Tree Navigator Error**:
-   - Fixed by handling the behavior tree XML path correctly
-   - Added fallback for missing navigation files
-   - Provided path verification to avoid startup errors
+The implementation has been organized as a set of reusable modules:
 
-3. **RViz Display Issues**:
-   - Added DISPLAY environment variable properly
-   - Included dbus-launch to ensure proper X11 authentication
-   - Created launcher script with all necessary environment setup
+- **grid_utils.py**: Utilities for grid coordinate transformations and operations
+- **sensor_processing.py**: Processes sensor data from ZED2i camera (pointcloud & depth)
+- **costmap_generator.py**: Core costmap generation and management logic
+- **local_costmap_generator.py**: ROS2 node that uses the above components
 
-4. **Costmap Generation**:
-   - Improved costmap generator configuration
-   - Added automatic saving of costmaps to ~/maps directory
-   - Created utility script to check and display generated costmaps
+Additionally, debug utilities are provided:
+- **debug_costmap.py**: Debug node that monitors costmap messages and provides statistics
+- **run_costmap_with_debug.sh**: Script to run everything together
 
-## How to Run
+## Key Changes
 
-### Option 1: Using the Launch Script (Recommended)
+1. **Improved Visualization**: Costmaps now initialize with free space (0) instead of unknown (-1), making them immediately visible in RViz
+2. **Modular Design**: Refactored into reusable components for better maintainability
+3. **Robust Processing**: Better error handling and logging
+4. **Debugging Tools**: Added tools to monitor and debug costmap generation
 
-The launcher script handles all environment setup and cleanup automatically:
+## Usage
 
-```bash
-# Navigate to project root
-cd /home/x4/xavier_robotics
-
-# Run the launcher
-./src/xavier_robotics/scripts/launch_inspection.sh
-```
-
-This script will:
-1. Kill any existing ROS2 processes
-2. Create the maps directory if needed
-3. Set up the ROS2 environment
-4. Configure display settings for RViz
-5. Launch the inspection system
-6. Save costmaps when done
-
-### Option 2: Manual Launch
-
-If you prefer to launch manually:
+### Building the Code
 
 ```bash
-# Kill any existing processes
-pkill -f "ros2|zed_|slam_toolbox|nav2|rviz2" || true
-
-# Navigate to project root
-cd /home/x4/xavier_robotics
-
-# Source ROS2 and project setup
-. /opt/ros/humble/setup.bash
-. install/setup.bash
-
-# Set display variable
-export DISPLAY=:1
-export $(dbus-launch)
-
-# Launch the system
-ros2 launch xavier_robotics autonomous_airplane_inspection.launch.py
+cd ~/ros2_ws
+colcon build --packages-select autonomous_nav xavier_robotics
+source install/setup.bash
 ```
 
-## Checking and Viewing Costmaps
+### Running with the ZED2i Camera
 
-A utility script is provided to check for generated costmaps and display them:
+Use the provided script to run the costmap generator with debugging tools:
 
 ```bash
-./src/xavier_robotics/scripts/check_costmaps.sh
+# Basic usage
+./src/xavier_robotics/scripts/run_costmap_with_debug.sh
+
+# Run with RViz visualization
+./src/xavier_robotics/scripts/run_costmap_with_debug.sh --rviz
+
+# Save debug images
+./src/xavier_robotics/scripts/run_costmap_with_debug.sh --save-images --output-dir /tmp/costmap_debug
 ```
 
-This will:
-1. Check for costmaps in ~/maps directory
-2. Check for temporary costmaps in /tmp
-3. Copy any temporary costmaps to ~/maps
-4. Display the latest costmap if an image viewer is available
+### Manual Launch
 
-## Costmap Generation Process
+If you prefer to run components individually:
 
-The system generates costmaps in the following way:
+1. Start the ZED2i ROS2 driver (if not already running):
+```bash
+ros2 launch zed_wrapper zed2i.launch.py
+```
 
-1. The ZED camera provides point cloud data from its depth sensor
-2. The point_cloud_processor processes this data to identify obstacles
-3. The local_costmap_generator creates a 2D occupancy grid from processed data
-4. The costmap_saver periodically saves the costmap to ~/maps directory
+2. Run the local costmap generator:
+```bash
+ros2 run autonomous_nav local_costmap_generator.py
+```
 
-Even if some navigation components fail (like the behavior tree navigator), the costmap generation process will still work independently.
+3. Run the debug utility:
+```bash
+ros2 run xavier_robotics debug_costmap.py
+```
 
-## Known Limitations
+4. Launch RViz with the costmap configuration:
+```bash
+ros2 run rviz2 rviz2 -d src/autonomous_nav/rviz/costmap_only.rviz
+```
 
-- The airplane_detector node requires PyTorch but has been disabled due to missing dependencies
-- RViz may have trouble displaying on some systems, but the costmap generation still works
-- In simulation environments, the ZED camera may not connect properly, but the system is designed to handle this gracefully
+## Configuration
+
+Parameters for the costmap generator can be adjusted in three ways:
+
+1. Directly in the node code in `local_costmap_generator.py`
+2. Using ROS2 parameter overrides on the command line:
+```bash
+ros2 run autonomous_nav local_costmap_generator.py --ros-args -p costmap_resolution:=0.1
+```
+3. With a ROS2 params file in a launch configuration
 
 ## Troubleshooting
 
-If costmaps are not being generated:
+If the costmap is not visible in RViz:
 
-1. Check if the local_costmap_generator node is running:
-   ```bash
-   ros2 node list | grep local_costmap_generator
-   ```
+1. Check that the ZED2i camera is properly connected and the driver is publishing point cloud data
+2. Verify the transforms are being published correctly:
+```bash
+ros2 run tf2_ros tf2_echo map camera_link
+```
+3. Ensure the costmap topic is being published:
+```bash
+ros2 topic info /local_costmap
+```
+4. Run the debug node to monitor costmap statistics:
+```bash
+ros2 run xavier_robotics debug_costmap.py
+```
 
-2. Check if the ZED camera is publishing point cloud data:
-   ```bash
-   ros2 topic echo /zed2i/zed_node/point_cloud/cloud_registered --once
-   ```
+## Technical Notes
 
-3. Check the ~/maps directory for existing costmaps:
-   ```bash
-   ls -la ~/maps/autonomous_inspection_costmap_*.pgm
-   ```
+- The costmap is published as an OccupancyGrid message on the `/local_costmap` topic
+- Values in the costmap: 0 = free space, 100 = obstacle, 50-99 = inflation around obstacles
+- The costmap resolution is configurable (default 0.05m per cell)
 
-4. Try running the system with environment variables explicitly set:
-   ```bash
-   DISPLAY=:1 ./src/xavier_robotics/scripts/launch_inspection.sh
+For further development or integration with the navigation system, refer to the source code comments.
