@@ -289,16 +289,22 @@ class LocalCostmapGenerator:
         msg.info.map_load_time = stamp
         
         # Convert occupancy grid to 1D list for OccupancyGrid message
-        # Convert -1 (unknown) to 0 (free) for better visibility in RViz
-        # and ensure values are in the range [0, 100]
+        # For ROS2 OccupancyGrid, values must be in range [-128, 127]
+        # But Nav2 expects: -1 = unknown, 0 = free space, 1-100 = occupied (cost)
         flat_grid = []
         for val in self.occupancy_grid.flatten():
             if val < 0:  # Unknown space (-1)
-                flat_grid.append(0)  # Convert to free space for better visualization
+                flat_grid.append(-1)  # Keep as unknown
             elif val > 100:  # Cap at 100
-                flat_grid.append(100)
+                flat_grid.append(100) 
             else:
-                flat_grid.append(val)
+                flat_grid.append(int(val))  # Ensure it's an integer
         
+        # Debug check: Verify all values are in valid range [-128, 127]
+        # Remove any out-of-range values to prevent the assertion error
+        if any(v < -128 or v > 127 for v in flat_grid):
+            self.logger.error(f"Found values outside valid range [-128, 127] in occupancy grid")
+            flat_grid = [max(-128, min(127, v)) for v in flat_grid]
+            
         msg.data = flat_grid
         return msg
